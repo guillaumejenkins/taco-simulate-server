@@ -7,12 +7,28 @@ var config = {};
 var simulationFilePath;
 
 Object.defineProperties(module.exports, {
+    liveReloadEnabled: {
+        get: function () {
+            return getValue('liveReloadEnabled');
+        },
+        set: function (value) {
+            setValue('liveReloadEnabled', value);
+        }
+    },
     platform: {
         get: function () {
             return getValue('platform');
         },
         set: function (value) {
             setValue('platform', value);
+        }
+    },
+    prepareOnChange: {
+        get: function () {
+            return getValue('prepareOnChange');
+        },
+        set: function (value) {
+            setValue('prepareOnChange', value);
         }
     },
     projectRoot: {
@@ -70,14 +86,14 @@ Object.defineProperties(module.exports, {
 });
 
 function setValue(prop, value, single) {
-    if (single && config[prop]) {
+    if (single && config.hasOwnProperty(prop)) {
         throw new Error('Can\'t reinitialize ' + prop);
     }
     config[prop] = value;
 }
 
 function getValue(prop, optional) {
-    if (!config[prop] && !optional) {
+    if (!config.hasOwnProperty(prop) && !optional) {
         throw new Error('Cannot get ' + prop + ' as it has not been initialized.');
     }
     return config[prop];

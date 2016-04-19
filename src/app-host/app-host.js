@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 
+var livereload = require('./live-reload-client');
 var Messages = require('messages');
 
 var cordova;
@@ -25,8 +26,8 @@ function setCordova(originalCordova) {
     // android platform has its own specific initialization
     // so to emulate it, we need to fake init function
     if (cordova.platformId === 'android') {
-        exec.init = function () { 
-            cordova.require('cordova/channel').onNativeReady.fire(); 
+        exec.init = function () {
+            cordova.require('cordova/channel').onNativeReady.fire();
         };
     }
 
@@ -72,13 +73,17 @@ socket.on('exec-failure', function (data) {
     }
 });
 
+socket.on('start-live-reload', function () {
+    livereload.start(socket);
+});
+
 socket.emit('register-app-host');
 
 function exec(success, fail, service, action, args) {
     // If we have a local handler, call that. Otherwise pass it to the simulation host.
     var handler = pluginHandlers[service] && pluginHandlers[service][action];
     if (handler) {
-       socket.emit('telemetry', {event: 'exec', props: {handled: 'app-host', service: service, action: action}});
+        socket.emit('telemetry', { event: 'exec', props: { handled: 'app-host', service: service, action: action } });
 
         // Ensure local handlers are executed asynchronously.
         setTimeout(function () {
@@ -86,8 +91,8 @@ function exec(success, fail, service, action, args) {
         }, 0);
     } else {
         var execIndex = nextExecCacheIndex++;
-        execCache[execIndex] = {index: execIndex, success: success, fail: fail};
-        socket.emit('exec', {index: execIndex, service: service, action: action, args: args, hasSuccess: !!success, hasFail: !!fail});
+        execCache[execIndex] = { index: execIndex, success: success, fail: fail };
+        socket.emit('exec', { index: execIndex, service: service, action: action, args: args, hasSuccess: !!success, hasFail: !!fail });
     }
 }
 
@@ -100,7 +105,7 @@ Object.defineProperty(window, 'cordova', {
 function clobber(clobbers, scope) {
     Object.keys(clobbers).forEach(function (key) {
         if (clobbers[key] && typeof clobbers[key] === 'object') {
-            scope[key] =  scope[key] || {};
+            scope[key] = scope[key] || {};
             clobber(clobbers[key], scope[key]);
         } else {
             scope[key] = clobbers[key];

@@ -2,6 +2,7 @@
 
 var log = require('./log'),
     config = require('./config');
+    livereload = require('./live-reload/live-reload-server');
 
 var appHost = 'app-host';
 var simHost = 'sim-host';
@@ -37,6 +38,12 @@ function init(server) {
             socket.on('telemetry', function (data) {
                 handleTelemetry(data.event, data.props);
             });
+            
+            // Set up live reload if necessary.
+            if (config.liveReloadEnabled) {
+                log.log('Starting live reload.');
+                livereload.init(socket);
+            }
 
             handlePendingEmits(appHost);
         });

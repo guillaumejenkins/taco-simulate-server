@@ -20,10 +20,14 @@ module.exports = function (opts, simHostOpts) {
 
     var platform = opts.platform || 'browser';
     var target = opts.target || 'chrome';
+    var liveReloadEnabled = !opts.nolivereload;
+    var prepareOnChange = !opts.noprepare;
 
     config.platform = platform;
     config.simHostOptions = simHostOpts || {};
     config.telemetry = opts.telemetry;
+    config.liveReloadEnabled = liveReloadEnabled;
+    config.prepareOnChange = prepareOnChange;
 
     simServer.attach(server.app);
 
@@ -41,7 +45,7 @@ module.exports = function (opts, simHostOpts) {
         appUrl = urlRoot + parseStartPage(projectRoot);
         simHostUrl = urlRoot + 'simulator/index.html';
         log.log('Server started:\n- App running at: ' + appUrl + '\n- Sim host running at: ' + simHostUrl);
-        return {appUrl: appUrl, simHostUrl: simHostUrl};
+        return { appUrl: appUrl, simHostUrl: simHostUrl };
     }).catch(function (error) {
         // Ensure server is closed, then rethrow so it can be handled by downstream consumers.
         config.server && config.server.close();
