@@ -1,5 +1,6 @@
-// Vogue - Client
-// Copyright (c) 2011 Andrew Davey (andrew@equin.co.uk)
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Based on implementation by "Vogue" (see NOTICE in project root).
+
 module.exports.start = function (sock) {
     var hop = Object.prototype.hasOwnProperty;
     var head = document.getElementsByTagName('head')[0];
@@ -35,7 +36,7 @@ module.exports.start = function (sock) {
             stylesheets[sheetRelativePath].href = newHref;
         }
     }
-    
+
     /**
      * Reload the page. Currently, only does a naive window.location.reload().
      */

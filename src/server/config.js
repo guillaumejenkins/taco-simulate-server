@@ -23,12 +23,12 @@ Object.defineProperties(module.exports, {
             setValue('platform', value);
         }
     },
-    prepareOnChange: {
+    prepareOnCssChange: {
         get: function () {
-            return getValue('prepareOnChange');
+            return getValue('prepareOnCssChange');
         },
         set: function (value) {
-            setValue('prepareOnChange', value);
+            setValue('prepareOnCssChange', value);
         }
     },
     projectRoot: {

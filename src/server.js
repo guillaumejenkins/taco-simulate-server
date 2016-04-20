@@ -20,14 +20,13 @@ module.exports = function (opts, simHostOpts) {
 
     var platform = opts.platform || 'browser';
     var target = opts.target || 'chrome';
-    var liveReloadEnabled = !opts.nolivereload;
-    var prepareOnChange = !opts.noprepare;
+    var liveReloadEnabled = !opts.nolivereload
 
     config.platform = platform;
     config.simHostOptions = simHostOpts || {};
     config.telemetry = opts.telemetry;
     config.liveReloadEnabled = liveReloadEnabled;
-    config.prepareOnChange = prepareOnChange;
+    config.prepareOnCssChange = !!opts.preparecss;
 
     simServer.attach(server.app);
 
