@@ -1,4 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
 
 // This module manages the queuing of dialogs. The simulation host must register dialogs (by adding them to
 // pluginDialogs) and handle the actual showing/hiding when requested (via hide() and show() methods attach to

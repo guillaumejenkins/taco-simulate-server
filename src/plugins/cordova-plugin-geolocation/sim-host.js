@@ -1,4 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
 // Based in part on code from Apache Ripple (https://github.com/apache/incubator-ripple)
 
 module.exports = function(messages) {

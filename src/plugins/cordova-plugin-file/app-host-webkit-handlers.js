@@ -1,4 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
 
 var filePluginIsReadyEvent = new Event('filePluginIsReady');
 var PERSISTENT_FS_QUOTA = 5 * 1024 * 1024;

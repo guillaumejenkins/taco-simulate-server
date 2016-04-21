@@ -1,4 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
 // Based on Apache Cordova geolocation plugin's Position implementation.
 // See https://github.com/apache/cordova-plugin-geolocation/blob/master/www/Position.js
 

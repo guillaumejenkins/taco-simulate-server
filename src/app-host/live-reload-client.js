@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
-// Based on implementation by "Vogue" (see NOTICE in project root).
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+// Based in part on code from Vogue (https://github.com/andrewdavey/vogue)
 
 module.exports.start = function (sock) {
     var hop = Object.prototype.hasOwnProperty;

@@ -1,4 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
 
 var deviceMotion = require('cordova-plugin-device-motion');
 var accelerometerHandle = null;
