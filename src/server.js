@@ -8,8 +8,7 @@ var Q = require('q'),
     config = require('./server/config'),
     log = require('./server/log'),
     simServer = require('./server/server'),
-    simSocket = require('./server/socket'),
-    plugins = require('./server/plugins');
+    simSocket = require('./server/socket');
 
 var server = cordovaServe();
 

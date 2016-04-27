@@ -4,13 +4,19 @@
 var fs = require('fs'),
     path = require('path'),
     cordovaServe = require('cordova-serve'),
-    pluginMapper  = require('cordova-registry-mapper').oldToNew,
+    pluginMapper = require('cordova-registry-mapper').oldToNew,
     config = require('./config'),
-    dirs = require('./dirs');
+    dirs = require('./dirs'),
+    telemetry = require('./telemetryHelper');
 
 var pluginSimulationFiles = require('./plugin-files');
 
 var plugins = {};
+var pluginsTelemetry = {
+    simulatedBuiltIn: [],
+    simulatedNonBuiltIn: [],
+    notSimulated: []
+};
 
 var _router;
 function initPlugins() {
@@ -32,13 +38,25 @@ function initPlugins() {
 
     var projectRoot = config.projectRoot;
     plugins = {};
+    pluginsTelemetry.simulatedBuiltIn = [];
+    pluginsTelemetry.simulatedNonBuiltIn = [];
+    pluginsTelemetry.notSimulated = [];
     pluginList.forEach(function (pluginId) {
         var pluginFilePath = findPluginPath(projectRoot, pluginId);
         if (pluginFilePath) {
             plugins[pluginId] = pluginFilePath;
+
+            if (pluginFilePath.indexOf(dirs.plugins) === 0) {
+                pluginsTelemetry.simulatedBuiltIn.push(pluginId);
+            } else {
+                pluginsTelemetry.simulatedNonBuiltIn.push(pluginId);
+            }
+        } else {
+            pluginsTelemetry.notSimulated.push(pluginId);
         }
     });
 
+    telemetry.sendTelemetry('plugins', { simulatedBuiltIn: pluginsTelemetry.simulatedBuiltIn }, { simulatedNonBuiltIn: pluginsTelemetry.simulatedNonBuiltIn, notSimulated: pluginsTelemetry.notSimulated });
     addPlatformDefaultHandlers();
     populateRouter();
 }
@@ -82,7 +100,6 @@ function findPluginSourceFilePath(projectRoot, pluginId, file) {
     var pluginPath = path.join(projectRoot, 'plugins', pluginId, 'src/simulation');
     var pluginFilePath = path.resolve(pluginPath, file);
     return fs.existsSync(pluginFilePath) ? pluginPath : findBuiltInPluginSourceFilePath(pluginId, file);
-
 }
 
 function findBuiltInPluginSourceFilePath(pluginId, file) {
@@ -105,5 +122,8 @@ function getRouter() {
 module.exports.initPlugins = initPlugins;
 module.exports.getRouter = getRouter;
 module.exports.getPlugins = function () {
-    return plugins
+    return plugins;
+};
+module.exports.getPluginsTelemetry = function () {
+    return pluginsTelemetry;
 };

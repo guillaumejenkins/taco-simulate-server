@@ -3,16 +3,19 @@
 
 var fs = require('fs');
 var path = require('path');
+var telemetry = require('../telemetryHelper');
 var Watcher = require('./Watcher').Watcher;
 
 var socket;
 var watcher;
 
 function cssFileChanged(fileRelativePath) {
+    telemetry.sendTelemetry('live-reload', { fileType: '.css' });
     socket.emit('lr-update-css', { href: fileRelativePath.replace(/\\/g, '/') });
 }
 
 function nonCssFileChanged(fileRelativePath) {
+    telemetry.sendTelemetry('live-reload', { fileType: path.extname(fileRelativePath) });
     socket.emit('lr-full-reload');
 }
 

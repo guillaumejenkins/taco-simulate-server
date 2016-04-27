@@ -107,7 +107,7 @@ function handleWatcherEvent(root, fileRelativePath) {
         if (isCss) {
             this.cssChangedCallback(fileRelativePath);
         } else {
-            this.nonCssChangedCallback();
+            this.nonCssChangedCallback(fileRelativePath);
         }
     }.bind(this)).done();
 }
