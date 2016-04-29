@@ -1,7 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
-function initialize() {
+var telemetry;
+var pluginId = 'cordova-plugin-device';
+var panelId = 'device';
+
+function initialize(telem) {
     var devices = [
         {
             'id': 'AcerA500',
@@ -59,8 +63,8 @@ function initialize() {
             'version': '1.6',
             'uuid': '6F196F23-FD0D-4F62-B27B-730147FCC5A3'
         },
-        {'id': 'HPPre3', 'name': 'HP Pre 3', 'model': 'Pre', 'platform': 'WebOS', 'version': '2.x'},
-        {'id': 'HPVeer', 'name': 'HP Veer', 'model': 'Veer', 'platform': 'WebOS', 'version': '2.x'},
+        { 'id': 'HPPre3', 'name': 'HP Pre 3', 'model': 'Pre', 'platform': 'WebOS', 'version': '2.x' },
+        { 'id': 'HPVeer', 'name': 'HP Veer', 'model': 'Veer', 'platform': 'WebOS', 'version': '2.x' },
         {
             'id': 'HVGA',
             'name': 'Generic - HVGA (320x480)',
@@ -157,7 +161,7 @@ function initialize() {
             'version': '2.3.x',
             'uuid': 'F54E13F1-C1B7-4212-BFA8-AB3C9C3F088F'
         },
-        {'id': 'NokiaN8', 'name': 'Nokia N8', 'model': 'N8', 'platform': 'SymbianOS', 'version': '3', 'uuid': '42'},
+        { 'id': 'NokiaN8', 'name': 'Nokia N8', 'model': 'N8', 'platform': 'SymbianOS', 'version': '3', 'uuid': '42' },
         {
             'id': 'NokiaN97',
             'name': 'Nokia N97/5800 (touch)',
@@ -166,8 +170,8 @@ function initialize() {
             'version': 'v5',
             'uuid': '42'
         },
-        {'id': 'PalmPre', 'name': 'Palm Pre', 'model': 'Pre', 'platform': 'WebOS', 'version': '1.x'},
-        {'id': 'PalmPre2', 'name': 'Palm Pre 2', 'model': 'Pre', 'platform': 'WebOS', 'version': '2.x'},
+        { 'id': 'PalmPre', 'name': 'Palm Pre', 'model': 'Pre', 'platform': 'WebOS', 'version': '1.x' },
+        { 'id': 'PalmPre2', 'name': 'Palm Pre 2', 'model': 'Pre', 'platform': 'WebOS', 'version': '2.x' },
         {
             'id': 'Pearl9100',
             'name': 'BlackBerry Pearl 9100',
@@ -240,7 +244,7 @@ function initialize() {
             'version': '7',
             'uuid': '42'
         },
-        {'id': 'Wave', 'name': 'Samsung Wave', 'model': 'Wave', 'platform': 'Bada', 'version': 'n/a'},
+        { 'id': 'Wave', 'name': 'Samsung Wave', 'model': 'Wave', 'platform': 'Bada', 'version': 'n/a' },
         {
             'id': 'WQVGA',
             'name': 'Generic - WQVGA (240x480)',
@@ -299,6 +303,11 @@ function initialize() {
     deviceList.onchange = handleSelectDevice;
     deviceList.value = 'WVGA';
     handleSelectDevice();
+    telemetry = telem;
+    document.getElementById('device-model').onchange = textEntrtelemetry.bind(this, 'device-model');
+    document.getElementById('device-platform').onchange = textEntrtelemetry.bind(this, 'device-platform');
+    document.getElementById('device-uuid').onchange = textEntrtelemetry.bind(this, 'device-uuid');
+    document.getElementById('device-version').onchange = textEntrtelemetry.bind(this, 'device-version');
 }
 
 function handleSelectDevice() {
@@ -308,6 +317,16 @@ function handleSelectDevice() {
     document.getElementById('device-platform').value = option.getAttribute('_platform');
     document.getElementById('device-uuid').value = option.getAttribute('_uuid');
     document.getElementById('device-version').value = option.getAttribute('_version');
+
+    if (telemetry) {
+        telemetry.telemetryHelper.sendClientTelemetry(telemetry.socket, 'plugin-ui', { pluginId: pluginId, panel: panelId, control: deviceList.id, value: option.value });
+    }
+}
+
+function textEntrtelemetry(inputId) {
+    if (telemetry) {
+        telemetry.telemetryHelper.sendClientTelemetry(telemetry.socket, 'plugin-ui', { pluginId: pluginId, panel: panelId, control: inputId });
+    }
 }
 
 module.exports = {
