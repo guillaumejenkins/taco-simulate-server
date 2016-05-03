@@ -2,12 +2,20 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 // Based in part on code from Apache Ripple (https://github.com/apache/incubator-ripple)
 
-module.exports = function(messages) {
+var telemetry;
+var pluginId = 'cordova-plugin-geolocation';
+var panelId = 'geolocation';
+
+// For telemetry about interacting with the map using the mouse, we "batch" the mouse events to prevent sending too many messages.
+var mouseEventHoldDelay = 1000; // The inactivity delay to wait before sending a telemetry event when the user interacts with the map.
+var pendingMouseEvents = 0; // The number of mouse events that are "on hold".
+
+module.exports = function (messages) {
     var constants = require('sim-constants'),
-        geo       = require('./geo-model'),
-        db        = require('db'),
-        event     = require('event'),
-        utils     = require('utils'),
+        geo = require('./geo-model'),
+        db = require('db'),
+        event = require('event'),
+        utils = require('utils'),
         _gpsMapZoomLevel;
 
     geo.initialize(messages);
@@ -19,9 +27,9 @@ module.exports = function(messages) {
 
         if (mapContainer) {
             geo.map.setCenter(new OpenLayers.LonLat(positionInfo.longitude, positionInfo.latitude) // Center of the map
-                    .transform(
-                    new OpenLayers.Projection('EPSG:4326'), // transform from WGS 1984
-                    new OpenLayers.Projection('EPSG:900913') // to Spherical Mercator Projection
+                .transform(
+                new OpenLayers.Projection('EPSG:4326'), // transform from WGS 1984
+                new OpenLayers.Projection('EPSG:900913') // to Spherical Mercator Projection
                 ),
                 _gpsMapZoomLevel,
                 true // don't trigger dragging events
@@ -34,7 +42,7 @@ module.exports = function(messages) {
     }
 
     function _updateGpsMapZoom(goUp) {
-        var inc = goUp? 1 : -1;
+        var inc = goUp ? 1 : -1;
         _gpsMapZoomSet(_gpsMapZoomLevel + inc);
         _updateGpsMap();
     }
@@ -78,6 +86,64 @@ module.exports = function(messages) {
         }
     }
 
+    function sendUITelemetry(controlData) {
+        if (telemetry) {
+            var props = { pluginId: pluginId, panel: panelId };
+
+            if (typeof controlData === "string") {
+                props.controlId = controlData;
+            } else {
+                props.controlId = controlData.id;
+                props.value = controlData.value;
+            }
+
+            telemetry.telemetryHelper.sendClientTelemetry(telemetry.socket, 'plugin-ui', props);
+        }
+    }
+
+    function mapEventTelemetryHandler() {
+        pendingMouseEvents++;
+        setTimeout(function () {
+            --pendingMouseEvents;
+
+            if (pendingMouseEvents === 0) {
+                sendUITelemetry('geo-map-container');
+            }
+        }, mouseEventHoldDelay);
+    }
+
+    function registerTelemetryEvents() {
+        document.getElementById('geo-latitude').onchange = sendUITelemetry.bind(this, 'geo-latitude');
+        document.getElementById('geo-longitude').onchange = sendUITelemetry.bind(this, 'geo-longitude');
+        document.getElementById('geo-altitude').onchange = sendUITelemetry.bind(this, 'geo-altitude');
+        document.getElementById('geo-accuracy').onchange = sendUITelemetry.bind(this, 'geo-accuracy');
+        document.getElementById('geo-altitude-accuracy').onchange = sendUITelemetry.bind(this, 'geo-altitude-accuracy');
+        document.getElementById('geo-heading').onchange = sendUITelemetry.bind(this, 'geo-heading');
+        document.getElementById('geo-speed').onchange = sendUITelemetry.bind(this, 'geo-speed');
+        document.getElementById('geo-delay').onchange = sendUITelemetry.bind(this, 'geo-delay');
+
+        // Clicking the checkbox's label fires the click event twice, so keep track of the previous state. Note that we can't use the change event because the component seems to swallow it.
+        var previousTimeoutState = false;
+        var geoTimeoutCheckbox = document.querySelector('#geo-timeout');
+
+        geoTimeoutCheckbox.onclick = function () {
+            if (geoTimeoutCheckbox.checked !== previousTimeoutState) {
+                previousTimeoutState = geoTimeoutCheckbox.checked;
+                sendUITelemetry('geo-timeout');
+            }
+        };
+        document.getElementById('geo-gpxfile-button').onclick = sendUITelemetry.bind(this, 'geo-gpxfile-button');
+        document.getElementById('geo-gpx-go').onclick = function () {
+            var rateList = document.getElementById('geo-gpxmultiplier-select');
+            var option = rateList.options[rateList.selectedIndex];
+
+            sendUITelemetry({ id: 'geo-gpx-go', value: option.value });
+        }
+        document.getElementById('geo-map-container').onwheel = mapEventTelemetryHandler;
+        document.getElementById('geo-map-zoom-decrease').onclick = sendUITelemetry.bind(this, 'geo-map-zoom-decrease');
+        document.getElementById('geo-map-zoom-increase').onclick = sendUITelemetry.bind(this, 'geo-map-zoom-increase');
+    }
+
     return {
         panel: {
             domId: 'gps-container',
@@ -85,31 +151,31 @@ module.exports = function(messages) {
             pane: 'right'
         },
 
-        initialize: function () {
-            var GEO_OPTIONS            = constants.GEO.OPTIONS,
-                positionInfo           = geo.getPositionInfo(),
+        initialize: function (telem) {
+            var GEO_OPTIONS = constants.GEO.OPTIONS,
+                positionInfo = geo.getPositionInfo(),
                 positionUpdatedMessage = 'position-info-updated',
-                latitude               = document.getElementById(GEO_OPTIONS.LATITUDE),
-                longitude              = document.getElementById(GEO_OPTIONS.LONGITUDE),
-                altitude               = document.getElementById(GEO_OPTIONS.ALTITUDE),
-                accuracy               = document.getElementById(GEO_OPTIONS.ACCURACY),
-                altitudeAccuracy       = document.getElementById(GEO_OPTIONS.ALTITUDE_ACCURACY),
-                heading                = document.getElementById(GEO_OPTIONS.HEADING),
-                speed                  = document.getElementById(GEO_OPTIONS.SPEED),
-                delay                  = document.getElementById(GEO_OPTIONS.DELAY),
-                delayLabel             = document.getElementById(GEO_OPTIONS.DELAY_LABEL),
-                headingLabel           = document.getElementById(GEO_OPTIONS.HEADING_LABEL),
-                headingMapLabel        = document.getElementById(GEO_OPTIONS.HEADING_MAP_LABEL),
-                timeout                = document.getElementById(GEO_OPTIONS.TIMEOUT),
-                gpxMultiplier          = document.getElementById(GEO_OPTIONS.GPXMULTIPLIER),
-                gpxReplayStatus        = document.getElementById(GEO_OPTIONS.GPXREPLAYSTATUS),
-                gpxGo                  = document.getElementById(GEO_OPTIONS.GPXGO),
-                mapMarker              = document.getElementById(GEO_OPTIONS.MAP_MARKER),
-                mapContainer           = document.getElementById(GEO_OPTIONS.MAP_CONTAINER),
-                map                    = null,
-                track                  = [],
-                _replayingGpxFile      = false,
-                _haltGpxReplay    = false;
+                latitude = document.getElementById(GEO_OPTIONS.LATITUDE),
+                longitude = document.getElementById(GEO_OPTIONS.LONGITUDE),
+                altitude = document.getElementById(GEO_OPTIONS.ALTITUDE),
+                accuracy = document.getElementById(GEO_OPTIONS.ACCURACY),
+                altitudeAccuracy = document.getElementById(GEO_OPTIONS.ALTITUDE_ACCURACY),
+                heading = document.getElementById(GEO_OPTIONS.HEADING),
+                speed = document.getElementById(GEO_OPTIONS.SPEED),
+                delay = document.getElementById(GEO_OPTIONS.DELAY),
+                delayLabel = document.getElementById(GEO_OPTIONS.DELAY_LABEL),
+                headingLabel = document.getElementById(GEO_OPTIONS.HEADING_LABEL),
+                headingMapLabel = document.getElementById(GEO_OPTIONS.HEADING_MAP_LABEL),
+                timeout = document.getElementById(GEO_OPTIONS.TIMEOUT),
+                gpxMultiplier = document.getElementById(GEO_OPTIONS.GPXMULTIPLIER),
+                gpxReplayStatus = document.getElementById(GEO_OPTIONS.GPXREPLAYSTATUS),
+                gpxGo = document.getElementById(GEO_OPTIONS.GPXGO),
+                mapMarker = document.getElementById(GEO_OPTIONS.MAP_MARKER),
+                mapContainer = document.getElementById(GEO_OPTIONS.MAP_CONTAINER),
+                map = null,
+                track = [],
+                _replayingGpxFile = false,
+                _haltGpxReplay = false;
 
             var updateGeoPending = false;
             function updateGeo() {
@@ -117,15 +183,15 @@ module.exports = function(messages) {
                     updateGeoPending = true;
                     window.setTimeout(function () {
                         geo.updatePositionInfo({
-                                latitude: parseFloat(latitude.value),
-                                longitude: parseFloat(longitude.value),
-                                altitude: parseInt(altitude.value, 10),
-                                accuracy: parseInt(accuracy.value, 10),
-                                altitudeAccuracy: parseInt(altitudeAccuracy.value, 10),
-                                heading: heading.value ? parseFloat(heading.value) : 0, // HACK: see techdebt http://www.pivotaltracker.com/story/show/5478847
-                                speed: speed.value ? parseInt(speed.value, 10) : 0, // HACK: see techdebt http://www.pivotaltracker.com/story/show/5478847
-                                timeStamp: new Date()
-                            },
+                            latitude: parseFloat(latitude.value),
+                            longitude: parseFloat(longitude.value),
+                            altitude: parseInt(altitude.value, 10),
+                            accuracy: parseInt(accuracy.value, 10),
+                            altitudeAccuracy: parseInt(altitudeAccuracy.value, 10),
+                            heading: heading.value ? parseFloat(heading.value) : 0, // HACK: see techdebt http://www.pivotaltracker.com/story/show/5478847
+                            speed: speed.value ? parseInt(speed.value, 10) : 0, // HACK: see techdebt http://www.pivotaltracker.com/story/show/5478847
+                            timeStamp: new Date()
+                        },
                             delay.value,
                             timeout.checked);
                         updateGeoPending = false;
@@ -134,7 +200,7 @@ module.exports = function(messages) {
             }
 
             function updateHeadingValues() {
-                var headingDeg  = parseFloat(heading.value),
+                var headingDeg = parseFloat(heading.value),
                     headingText = _getTextHeading(parseFloat(heading.value));
 
                 headingLabel.textContent = headingText;
@@ -176,7 +242,7 @@ module.exports = function(messages) {
                 OpenLayers.ImgPath = 'http://openlayers.org/api/img/';
 
                 // init map
-                geo.map = new OpenLayers.Map(mapContainer, {controls: [], theme: null});
+                geo.map = new OpenLayers.Map(mapContainer, { controls: [], theme: null });
 
                 // add controls and OSM map layer
                 geo.map.addLayer(new OpenLayers.Layer.OSM());
@@ -188,14 +254,16 @@ module.exports = function(messages) {
                     {
                         click: function (e) {
                             var lonlat = geo.map.getLonLatFromViewPortPx(e.xy);
+                            mapEventTelemetryHandler();
                             geo.map.panTo(new OpenLayers.LonLat(lonlat.lon, lonlat.lat), _gpsMapZoomLevel);
                         },
 
                         dblclick: function () {
+                            mapEventTelemetryHandler();
                             _updateGpsMapZoom(true);
                         }
                     },
-                    {double: true}
+                    { double: true }
                 );
 
                 // add click handler to map
@@ -204,6 +272,7 @@ module.exports = function(messages) {
 
                 // update long and lat when map is panned
                 geo.map.events.register('moveend', map, function () {
+                    mapEventTelemetryHandler();
                     updateValsFromMap();
                 });
 
@@ -215,7 +284,7 @@ module.exports = function(messages) {
             }
 
             function loadGpxFile(filename) {
-                var reader        = new FileReader(),
+                var reader = new FileReader(),
                     _xml,
                     t,
                     att,
@@ -228,10 +297,10 @@ module.exports = function(messages) {
                     _tempPosition,
                     _lastPosition,
                     _useLastTimestamp,
-                    _heading      = 0,
-                    _speed        = 0,
-                    _dist         = 0,
-                    navUtils      = new utils.navHelper();
+                    _heading = 0,
+                    _speed = 0,
+                    _dist = 0,
+                    navUtils = new utils.navHelper();
 
                 reader.onload = function (e) {
                     function parseXml(xml) {
@@ -351,8 +420,8 @@ module.exports = function(messages) {
                 else {
                     _replayingGpxFile = true;
                     var _timeMultiplier = !isNaN(gpxMultiplier.value) ? gpxMultiplier.value : 1,
-                        _step           = 0,
-                        _interval       = 0;
+                        _step = 0,
+                        _interval = 0;
 
                     while (_interval < 250) {
                         _step++;
@@ -481,6 +550,9 @@ module.exports = function(messages) {
                     timeStamp: new Date()
                 });
             }
+
+            telemetry = telem;
+            registerTelemetryEvents();
         }
     };
 };

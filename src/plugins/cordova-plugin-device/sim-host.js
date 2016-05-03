@@ -304,10 +304,10 @@ function initialize(telem) {
     deviceList.value = 'WVGA';
     handleSelectDevice();
     telemetry = telem;
-    document.getElementById('device-model').onchange = textEntrtelemetry.bind(this, 'device-model');
-    document.getElementById('device-platform').onchange = textEntrtelemetry.bind(this, 'device-platform');
-    document.getElementById('device-uuid').onchange = textEntrtelemetry.bind(this, 'device-uuid');
-    document.getElementById('device-version').onchange = textEntrtelemetry.bind(this, 'device-version');
+    document.getElementById('device-model').onchange = sendUITelemetry.bind(this, 'device-model');
+    document.getElementById('device-platform').onchange = sendUITelemetry.bind(this, 'device-platform');
+    document.getElementById('device-uuid').onchange = sendUITelemetry.bind(this, 'device-uuid');
+    document.getElementById('device-version').onchange = sendUITelemetry.bind(this, 'device-version');
 }
 
 function handleSelectDevice() {
@@ -323,9 +323,9 @@ function handleSelectDevice() {
     }
 }
 
-function textEntrtelemetry(inputId) {
+function sendUITelemetry(controlId) {
     if (telemetry) {
-        telemetry.telemetryHelper.sendClientTelemetry(telemetry.socket, 'plugin-ui', { pluginId: pluginId, panel: panelId, control: inputId });
+        telemetry.telemetryHelper.sendClientTelemetry(telemetry.socket, 'plugin-ui', { pluginId: pluginId, panel: panelId, control: controlId });
     }
 }
 

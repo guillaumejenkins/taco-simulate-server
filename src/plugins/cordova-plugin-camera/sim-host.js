@@ -44,9 +44,9 @@ module.exports = function (messages) {
         reader.readAsArrayBuffer(blob);
     }
 
-    function sendUITelemetry(inputId) {
+    function sendUITelemetry(controlId) {
         if (telemetry) {
-            telemetry.telemetryHelper.sendClientTelemetry(telemetry.socket, 'plugin-ui', { pluginId: pluginId, panel: panelId, control: inputId });
+            telemetry.telemetryHelper.sendClientTelemetry(telemetry.socket, 'plugin-ui', { pluginId: pluginId, panel: panelId, control: controlId });
         }
     }
 

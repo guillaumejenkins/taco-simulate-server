@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
- 
+
 // https://github.com/apache/cordova-plugin-device-motion/
 
 require('./3d');
@@ -81,7 +81,16 @@ var recordedGestures = [
     }
 ];
 
-function initialize() {
+var telemetry;
+var pluginId = 'cordova-plugin-device-motion';
+var panelId = 'accelerometer';
+
+// For telemetry about dragging the 3D device in the accelerometer panel, we "batch" the mouse drag events to prevent sending too many messages.
+var mouseDragEventHoldDelay = 1000; // The inactivity delay to wait before sending a telemetry event when the user rotates the 3D device.
+var pendingMouseDragEvents = 0; // The number of mouse drag events that are "on hold".
+
+function initialize(telem) {
+    telemetry = telem;
     axisX = document.getElementById('accel-x');
     axisY = document.getElementById('accel-y');
     axisZ = document.getElementById('accel-z');
@@ -96,22 +105,35 @@ function initialize() {
     var recordedGesturesList = document.getElementById('accel-recorded-data');
     recordedGestures.forEach(function (gesture) {
         var option = document.createElement('option');
-        option.appendChild( document.createTextNode(gesture.name));
+        option.appendChild(document.createTextNode(gesture.name));
         recordedGesturesList.appendChild(option);
     });
 
-    document.getElementById('accel-play-recorded').addEventListener('click', function() {
+    document.getElementById('accel-play-recorded').addEventListener('click', function () {
         var list = document.getElementById('accel-recorded-data');
+        sendUITelemetry('accel-play-recorded', recordedGestures[list.selectedIndex].name);
         recordedGestures[list.selectedIndex].fn();
     });
 }
 
-function setToDefaultPosition() {
-     var accel = {x: 0, y: 0, z: -1, alpha: 0, beta: 0, gamma: 0 };
+function sendUITelemetry(controlId, value) {
+    if (telemetry) {
+        var props = { pluginId: pluginId, panel: panelId, control: controlId };
 
-     axisX.value = (accel.x * gConstant).toFixed(2);
-     axisY.value = (accel.y * gConstant).toFixed(2);
-     axisZ.value = (accel.z * gConstant).toFixed(2);
+        if (value !== void 0) {
+            props.value = value;
+        }
+        
+        telemetry.telemetryHelper.sendClientTelemetry(telemetry.socket, 'plugin-ui', props);
+    }
+}
+
+function setToDefaultPosition() {
+    var accel = { x: 0, y: 0, z: -1, alpha: 0, beta: 0, gamma: 0 };
+
+    axisX.value = (accel.x * gConstant).toFixed(2);
+    axisY.value = (accel.y * gConstant).toFixed(2);
+    axisZ.value = (accel.z * gConstant).toFixed(2);
 
     _alpha = accel.alpha;
     _beta = accel.beta;
@@ -127,7 +149,7 @@ function setToDefaultPosition() {
         z: accel.z
     };
 
-    updateCanvas(0,0);
+    updateCanvas(0, 0);
 }
 
 function shake() {
@@ -140,7 +162,7 @@ function shake() {
         var freq = 1,
             amp = 20,
             value = Math.round(amp * Math.sin(freq * count * (180 / Math.PI)) * 100) / 100;
-    
+
         if (count > stopCount) {
             updateCanvasCenter(defaultXAxis, defaultYAxis);
             axisX.value = oldX;
@@ -154,7 +176,7 @@ function shake() {
         updateCanvasCenter(center, defaultYAxis);
         count++;
     }, ACCELEROMETER_REPORT_INTERVAL);
- }
+}
 
 module.exports = {
     initialize: initialize,
@@ -198,47 +220,56 @@ function createCanvas() {
     ThreeDee.setLight(-300, -300, 800);
 
     node.addEventListener('mousemove', function (e) {
-        if (_mouseDown && !_shiftKeyDown) {
-            _offsets.x = (_offsets.x + _oldX - e.offsetX) % 360;
-            _offsets.y = (_offsets.y + _oldY - e.offsetY) % 360;
+        if (_mouseDown) {
+            if (!_shiftKeyDown) {
+                _offsets.x = (_offsets.x + _oldX - e.offsetX) % 360;
+                _offsets.y = (_offsets.y + _oldY - e.offsetY) % 360;
 
-            _alpha = _alpha || 0;
+                _alpha = _alpha || 0;
 
-            // enforce gamma in [-90,90] as per w3c spec
-            _gamma = -_offsets.x;
-            if (_gamma < -90) {
-                _gamma = -90;
+                // enforce gamma in [-90,90] as per w3c spec
+                _gamma = -_offsets.x;
+                if (_gamma < -90) {
+                    _gamma = -90;
+                }
+                if (_gamma > 90) {
+                    _gamma = 90;
+                }
+
+                // enforce beta in [-180,180] as per w3c spec
+                _beta = -_offsets.y % 360;
+                if (_beta < -180) {
+                    _beta += 360;
+                }
+                else if (_beta >= 180) {
+                    _beta -= 360;
+                }
+
+                cosX = Math.cos((_gamma) * (Math.PI / 180));
+                sinX = Math.sin((_gamma) * (Math.PI / 180));
+                cosY = Math.cos((_beta) * (Math.PI / 180));
+                sinY = Math.sin((_beta) * (Math.PI / 180));
+
+                axisX.value = (cosY * sinX * gConstant).toFixed(2);
+                axisY.value = (-sinY * gConstant).toFixed(2);
+                axisZ.value = (-cosY * cosX * gConstant).toFixed(2);
+                beta.value = _beta;
+                gamma.value = _gamma;
+            } else {
+                _deltaAlpha = (_deltaAlpha - (_oldAlphaX - e.offsetX) * 2.5) % 360;
+                _alpha = (360 - _deltaAlpha) % 360;
+
+                alpha.value = _alpha;
             }
-            if (_gamma > 90) {
-                _gamma = 90;
-            }
 
-            // enforce beta in [-180,180] as per w3c spec
-            _beta = -_offsets.y % 360;
-            if (_beta < -180) {
-                _beta += 360;
-            }
-            else if (_beta >= 180) {
-                _beta -= 360;
-            }
+            pendingMouseDragEvents++;
+            setTimeout(function () {
+                --pendingMouseDragEvents;
 
-            cosX = Math.cos((_gamma) * (Math.PI / 180));
-            sinX = Math.sin((_gamma) * (Math.PI / 180));
-            cosY = Math.cos((_beta) * (Math.PI / 180));
-            sinY = Math.sin((_beta) * (Math.PI / 180));
-
-            axisX.value = (cosY * sinX * gConstant).toFixed(2);
-            axisY.value = (-sinY * gConstant).toFixed(2);
-            axisZ.value = (-cosY * cosX * gConstant).toFixed(2);
-            beta.value = _beta;
-            gamma.value = _gamma;
-
-
-        } else if (_mouseDown && _shiftKeyDown) {
-            _deltaAlpha = (_deltaAlpha - (_oldAlphaX - e.offsetX) * 2.5) % 360;
-            _alpha = (360 - _deltaAlpha) % 360;
-
-            alpha.value = _alpha;
+                if (pendingMouseDragEvents === 0) {
+                    sendUITelemetry('accelerometer-canvas');
+                }
+            }, mouseDragEventHoldDelay);
         }
 
         _oldX = e.offsetX;
